@@ -15,7 +15,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 1. आपका नया और हल्का मॉडल (135M)
 MODEL_PATH = "smollm2-135m.gguf"
 MODEL_URL = "https://github.com/f826556-commits/-/releases/download/v1.0/SmolLM2-135M-Instruct-Q4_K_M.gguf"
 
@@ -24,10 +23,10 @@ if not os.path.exists(MODEL_PATH):
     urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
     print("डाउनलोड पूरा हुआ!")
 
-# 2. EXTREME RAM SAVING सेटिंग्स (512MB RAM के लिए)
+# n_ctx को 128 से बढ़ाकर 256 कर दिया है ताकि उसे सोचने की जगह मिले
 llm = Llama(
     model_path=MODEL_PATH,
-    n_ctx=128,          
+    n_ctx=256,          
     n_threads=1,        
     n_batch=8,          
     n_gpu_layers=0,
@@ -44,17 +43,16 @@ def cleanup_memory():
 @app.post("/ask")
 def ask_model(query: Query, background_tasks: BackgroundTasks):
     try:
-        system_prompt = "Reply with a single extremely short answer. For math, just give the number."
-        formatted_prompt = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{query.prompt}<|im_end|>\n<|im_start|>assistant\n"
-        
-        output = llm(
-            formatted_prompt,
-            max_tokens=20,       
-            stop=["<|im_end|>"],
-            echo=False
+        # मैनुअल <|im_start|> को हटाकर सुरक्षित Chat API का इस्तेमाल
+        output = llm.create_chat_completion(
+            messages=[
+                {"role": "system", "content": "Reply with a single extremely short answer. For math, just give the number."},
+                {"role": "user", "content": query.prompt}
+            ],
+            max_tokens=20
         )
         
-        reply = output["choices"][0]["text"].strip()
+        reply = output["choices"][0]["message"]["content"].strip()
         background_tasks.add_task(cleanup_memory)
         
         return {"reply": reply}
