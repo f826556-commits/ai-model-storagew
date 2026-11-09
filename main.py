@@ -4,11 +4,10 @@ from pydantic import BaseModel
 from llama_cpp import Llama
 import os
 import urllib.request
-from deep_translator import GoogleTranslator
 
 app = FastAPI()
 
-# यह कोड CORS एरर को खत्म करेगा
+# CORS सेटिंग ताकि आपका दूसरा सर्वर या फ्रंटएंड इससे बात कर सके
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,7 +19,7 @@ MODEL_PATH = "smollm2.gguf"
 MODEL_URL = "https://github.com/f826556-commits/ai-model-storagew/releases/download/v1.0/SmolLM2-360M-Instruct-Q4_K_M.gguf"
 
 if not os.path.exists(MODEL_PATH):
-    print("आपका दिमाग (Model) डाउनलोड हो रहा है... कृपया प्रतीक्षा करें...")
+    print("दिमाग (Model) डाउनलोड हो रहा है... कृपया प्रतीक्षा करें...")
     urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
     print("डाउनलोड पूरा हुआ!")
 
@@ -37,8 +36,8 @@ class Query(BaseModel):
 @app.post("/ask")
 def ask_model(query: Query):
     try:
-        english_prompt = GoogleTranslator(source='hi', target='en').translate(query.prompt)
-        formatted_prompt = f"<|im_start|>user\n{english_prompt}<|im_end|>\n<|im_start|>assistant\n"
+        # जो भी सवाल आएगा, वह सीधा मॉडल को चला जाएगा
+        formatted_prompt = f"<|im_start|>user\n{query.prompt}<|im_end|>\n<|im_start|>assistant\n"
         
         output = llm(
             formatted_prompt,
@@ -46,15 +45,15 @@ def ask_model(query: Query):
             stop=["<|im_end|>"],
             echo=False
         )
-        english_reply = output["choices"][0]["text"].strip()
-        hindi_reply = GoogleTranslator(source='en', target='hi').translate(english_reply)
         
-        return {"reply": hindi_reply}
+        # मॉडल जो भी जवाब देगा (इंग्लिश में), वह सीधा वापस भेज दिया जाएगा
+        reply = output["choices"][0]["text"].strip()
+        return {"reply": reply}
         
     except Exception as e:
         return {"error": str(e)}
 
 @app.get("/")
 def read_root():
-    return {"status": "आपका खुद का दिमाग 100% काम कर रहा है!"}
+    return {"status": "प्योर दिमाग (बिना ट्रांसलेटर) 100% काम कर रहा है!"}
     
