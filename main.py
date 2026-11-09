@@ -57,4 +57,4 @@ def ask_model(query: Query):
 @app.get("/")
 def read_root():
     return {"status": "आपका खुद का दिमाग 100% काम कर रहा है!"}
-  z
+  
